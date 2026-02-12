@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Document Merger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+        }
+        /* Styles for the combined output preview */
+        #output-content {
+            font-family: serif;
+        }
+        .merged-section {
+            margin-bottom: 4rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">HTML Document Merger</h1>
+            <p class="text-gray-600 mt-2">Combine multiple student HTML files into a single document.</p>
+        </header>
+
+        <!-- Tool Controls -->
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div id="drop-zone" class="drop-zone rounded-lg p-10 text-center cursor-pointer">
+                <input type="file" id="file-input" multiple accept=".html,.htm" class="hidden">
+                <div class="space-y-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p class="text-lg font-medium text-gray-700">Click to upload or drag & drop HTML files</p>
+                    <p class="text-sm text-gray-500">Supports .html and .htm files</p>
+                </div>
+            </div>
+
+            <div id="file-list-container" class="mt-6 hidden">
+                <h3 class="font-semibold text-gray-700 mb-2">Selected Files (<span id="file-count">0</span>)</h3>
+                <ul id="file-list" class="text-sm text-gray-600 space-y-1 max-h-40 overflow-y-auto bg-gray-50 p-3 rounded"></ul>
+                
+                <div class="mt-6 flex flex-wrap gap-3">
+                    <button id="process-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                        Merge Files
+                    </button>
+                    <button id="clear-btn" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-2 rounded-lg font-medium transition">
+                        Clear All
+                    </button>
+                    <button id="download-btn" class="hidden bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition">
+                        Download Merged HTML
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Area -->
+        <div id="preview-container" class="hidden space-y-4">
+            <h2 class="text-xl font-bold text-gray-800">Preview</h2>
+            <div id="output-content" class="bg-white rounded-xl shadow-sm p-8 border border-gray-200 overflow-x-auto">
+                <!-- Merged content will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const fileListContainer = document.getElementById('file-list-container');
+        const fileList = document.getElementById('file-list');
+        const fileCountSpan = document.getElementById('file-count');
+        const processBtn = document.getElementById('process-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const previewContainer = document.getElementById('preview-container');
+        const outputContent = document.getElementById('output-content');
+
+        let selectedFiles = [];
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        function handleFiles(files) {
+            const newFiles = Array.from(files).filter(f => f.name.endsWith('.html') || f.name.endsWith('.htm'));
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updateUI();
+        }
+
+        function updateUI() {
+            if (selectedFiles.length > 0) {
+                fileListContainer.classList.remove('hidden');
+                fileCountSpan.textContent = selectedFiles.length;
+                fileList.innerHTML = selectedFiles.map(f => `<li>• ${f.name}</li>`).join('');
+            } else {
+                fileListContainer.classList.add('hidden');
+                previewContainer.classList.add('hidden');
+                downloadBtn.classList.add('hidden');
+            }
+        }
+
+        clearBtn.addEventListener('click', () => {
+            selectedFiles = [];
+            fileInput.value = '';
+            updateUI();
+        });
+
+        processBtn.addEventListener('click', async () => {
+            if (selectedFiles.length === 0) return;
+
+            let combinedHTML = `
+                <div style="font-family: sans-serif; max-width: 800px; margin: auto; padding: 20px;">
+                    <h1 style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 40px;">Merged Report Document</h1>
+            `;
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+                const file = selectedFiles[i];
+                const text = await file.text();
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const bodyContent = doc.body ? doc.body.innerHTML : '<em>No body content found</em>';
+
+                combinedHTML += `
+                    <div class="merged-section" style="margin-top: 30px;">
+                        <div style="background: #f1f5f9; color: #475569; padding: 8px 15px; font-weight: bold; font-family: sans-serif; border-radius: 4px; margin-bottom: 20px; font-size: 0.9em;">
+                            File: ${file.name}
+                        </div>
+                        <div style="padding: 10px;">
+                            ${bodyContent}
+                        </div>
+                    </div>
+                `;
+            }
+
+            combinedHTML += `</div>`;
+
+            outputContent.innerHTML = combinedHTML;
+            previewContainer.classList.remove('hidden');
+            downloadBtn.classList.remove('hidden');
+            
+            previewContainer.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const content = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Merged Documents</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; }
+        .merged-section { page-break-after: always; border-bottom: 1px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 40px; }
+        h1 { color: #1a202c; }
+        @media print {
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    ${outputContent.innerHTML}
+</body>
+</html>`;
+
+            const blob = new Blob([content], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `merged_documents_${new Date().getTime()}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
